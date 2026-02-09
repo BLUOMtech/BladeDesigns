@@ -40,20 +40,24 @@ button{padding:10px;border:none;border-radius:8px;background:#222;color:#fff;mar
 </div>
 </div>
 
+<div id="downloads" class="box" style="display:none">
+  <h3>Your Digital Downloads</h3>
+  <div id="downloadLinks"></div>
+</div>
+
 <script>
 let cart = JSON.parse(localStorage.getItem("cart")||"[]");
 
+// PRODUCTS
 function getProducts(){return JSON.parse(localStorage.getItem("products")||"[]");}
 function saveCart(){localStorage.setItem("cart",JSON.stringify(cart));updateCartUI();}
-function toggleCart(){document.getElementById("cart").classList.toggle("open");}
 
+// CART UI
+function toggleCart(){document.getElementById("cart").classList.toggle("open");}
 function updateCartUI(){
   document.getElementById("cartCount").innerText = cart.reduce((a,b)=>a+b.qty,0);
   let items="", total=0;
-  cart.forEach(i=>{
-    total+=i.price*i.qty;
-    items+=`${i.title} x ${i.qty}<br>`;
-  });
+  cart.forEach(i=>{total+=i.price*i.qty; items+=`${i.title} x ${i.qty}<br>`;});
   document.getElementById("cartItems").innerHTML=items;
   document.getElementById("total").innerText=total;
 }
@@ -64,6 +68,7 @@ function addToCart(p){
   saveCart();
 }
 
+// SHOP RENDER
 function renderShop(){
   let html="";
   getProducts().forEach(p=>{
@@ -78,6 +83,7 @@ function renderShop(){
   document.getElementById("shop").innerHTML=html;
 }
 
+// CHECKOUT
 function checkout(){
   const ref="ORDER-"+Date.now();
   document.getElementById("orderRef").innerText=ref;
@@ -88,18 +94,43 @@ function checkout(){
 function placeOrder(){
   const orders=JSON.parse(localStorage.getItem("orders")||"[]");
   orders.push({
-    ref:localStorage.getItem("currentOrderRef"),
-    items:cart,
-    paid:false
+    ref: localStorage.getItem("currentOrderRef"),
+    items: cart,
+    paid: false
   });
   localStorage.setItem("orders",JSON.stringify(orders));
   alert("Order placed! Tell the owner your reference.");
   cart=[];
   saveCart();
+  document.getElementById("payBox").style.display="none";
 }
 
+// DOWNLOADS (only for paid orders)
+function showDownloads(){
+  const orders = JSON.parse(localStorage.getItem("orders")||"[]");
+  const paidOrders = orders.filter(o => o.paid);
+  if(!paidOrders.length) return;
+  let html="";
+  paidOrders.forEach(order=>{
+    order.items.forEach(item=>{
+      if(item.type==="digital"){
+        html+=`<a href="${item.download}" download><button>Download ${item.title}</button></a><br><br>`;
+      }
+    });
+  });
+  if(html){
+    document.getElementById("downloads").style.display="block";
+    document.getElementById("downloadLinks").innerHTML=html;
+  }
+}
+
+// INITIALIZE
 renderShop();
 updateCartUI();
+showDownloads();
 </script>
+
 </body>
 </html>
+
+
