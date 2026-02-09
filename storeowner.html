@@ -6,11 +6,12 @@
 <title>Blade Designs – Owner</title>
 <style>
 body{font-family:sans-serif;background:#f2f2f2;margin:0;padding:20px}
-.box{background:#fff;padding:20px;border-radius:10px;max-width:400px;margin:auto;margin-top:60px;box-shadow:0 4px 10px rgba(0,0,0,.1)}
-input{width:100%;padding:10px;margin:10px 0;border-radius:8px;border:1px solid #ccc}
+.box{background:#fff;padding:20px;border-radius:10px;max-width:600px;margin:auto;margin-top:40px;box-shadow:0 4px 10px rgba(0,0,0,.1)}
+input, select, textarea{width:100%;padding:10px;margin:5px 0;border-radius:8px;border:1px solid #ccc}
 button{padding:10px;width:100%;border:none;border-radius:8px;background:#222;color:#fff;cursor:pointer;margin-top:5px}
 .hidden{display:none}
 .card{background:#fff;padding:10px;border-radius:10px;margin:10px 0}
+.flex{display:flex;gap:10px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -31,19 +32,24 @@ button{padding:10px;width:100%;border:none;border-radius:8px;background:#222;col
   <input id="newPass" type="password" placeholder="New Password">
   <button onclick="changeCredentials()">Change Login</button>
 
-  <h3>Add Product</h3>
+  <h3>Add/Edit Product</h3>
+  <input id="prodId" type="hidden">
   <input id="title" placeholder="Title">
   <input id="price" type="number" placeholder="Price">
   <select id="type">
     <option value="physical">Physical</option>
     <option value="digital">Digital</option>
   </select>
-  <input id="download" placeholder="Download path (digital)">
-  <input id="image" type="file">
-  <button onclick="addProduct()">Add Product</button>
+  <input id="download" placeholder="Download path (for digital)">
+  <input id="imageFile" type="file">
+  <input id="imageURL" placeholder="Or enter image URL">
+  <button onclick="saveProduct()">Save Product</button>
+
+  <h3>Products</h3>
+  <div id="productsList"></div>
 
   <h3>Orders</h3>
-  <div id="orders"></div>
+  <div id="ordersList"></div>
 </div>
 
 <script>
@@ -72,6 +78,7 @@ function login(){
   if(eHash === localStorage.getItem("ownerEmail") && pHash === localStorage.getItem("ownerPass")){
     document.getElementById("loginBox").classList.add("hidden");
     document.getElementById("ownerPanel").classList.remove("hidden");
+    renderProducts();
     renderOrders();
     alert("Login successful!");
   } else alert("Incorrect login");
@@ -89,7 +96,7 @@ function changeCredentials(){
     localStorage.setItem("ownerEmail", BPhashIt.hashit(newEmail.value));
     localStorage.setItem("ownerPass", BPhashIt.hashit(newPass.value));
     newEmail.value=""; newPass.value="";
-    alert("Credentials updated! Please logout and login again.");
+    alert("Credentials updated! Logout and login again.");
   } else alert("Enter both email and password");
 }
 
@@ -97,44 +104,113 @@ function changeCredentials(){
 function getProducts(){return JSON.parse(localStorage.getItem("products")||"[]");}
 function saveProducts(p){localStorage.setItem("products",JSON.stringify(p));}
 
-function addProduct(){
-  const r=new FileReader();
-  r.onload=()=>{
-    let p=getProducts();
-    p.push({
-      id:Date.now(),
-      title:title.value,
-      price:Number(price.value),
-      type:type.value,
-      image:r.result,
-      download:download.value
-    });
-    saveProducts(p);
-    alert("Product added!");
-  };
-  r.readAsDataURL(image.files[0]);
+function saveProduct(){
+  const id = prodId.value ? Number(prodId.value) : Date.now();
+  const titleVal = title.value;
+  const priceVal = Number(price.value);
+  const typeVal = type.value;
+  const downloadVal = download.value;
+  const file = imageFile.files[0];
+
+  function finalize(imageData){
+    let products = getProducts();
+    const existingIndex = products.findIndex(p=>p.id===id);
+    const productObj = {id,title:titleVal,price:priceVal,type:typeVal,download:downloadVal,image:imageData};
+    if(existingIndex>=0) products[existingIndex]=productObj;
+    else products.push(productObj);
+    saveProducts(products);
+    renderProducts();
+    resetForm();
+    alert("Product saved!");
+  }
+
+  if(file){
+    const reader=new FileReader();
+    reader.onload=()=>{finalize(reader.result);}
+    reader.readAsDataURL(file);
+  } else if(imageURL.value){
+    finalize(imageURL.value);
+  } else {
+    alert("Please provide image file or URL");
+  }
 }
 
+function editProduct(id){
+  const p=getProducts().find(x=>x.id===id);
+  prodId.value=p.id;
+  title.value=p.title;
+  price.value=p.price;
+  type.value=p.type;
+  download.value=p.download;
+  imageURL.value=p.image;
+}
+
+function deleteProduct(id){
+  if(confirm("Delete this product?")){
+    let products=getProducts();
+    products=products.filter(p=>p.id!==id);
+    saveProducts(products);
+    renderProducts();
+  }
+}
+
+function renderProducts(){
+  let html="";
+  getProducts().forEach(p=>{
+    html+=`
+      <div class="card">
+        <img src="${p.image}" style="width:100%;border-radius:8px">
+        <b>${p.title}</b><br>
+        $${p.price}<br>
+        <button onclick="editProduct(${p.id})">Edit</button>
+        <button onclick="deleteProduct(${p.id})">Delete</button>
+      </div>`;
+  });
+  document.getElementById("productsList").innerHTML=html;
+}
+
+function resetForm(){prodId.value=""; title.value=""; price.value=""; type.value="physical"; download.value=""; imageFile.value=""; imageURL.value="";}
+
 // ----- Orders -----
+function getOrders(){return JSON.parse(localStorage.getItem("orders")||"[]");}
+function saveOrders(o){localStorage.setItem("orders",JSON.stringify(o));}
+
 function renderOrders(){
-  const orders=JSON.parse(localStorage.getItem("orders")||"[]");
+  const orders = getOrders();
   let html="";
   orders.forEach((o,i)=>{
-    html+=`
-    <div class="card">
-      <b>${o.ref}</b><br>
-      Paid: ${o.paid}<br>
-      <button onclick="markPaid(${i})">Mark Paid</button>
+    html+=`<div class="card">
+      <b>Ref: ${o.ref}</b><br>
+      Paid: ${o.paid} | Refunded: ${o.refunded}<br>
+      <button ${o.paid?"disabled":""} onclick="markPaid(${i})">Mark Paid</button>
+      <button ${o.refunded?"disabled":""} onclick="markRefund(${i})">Mark Refunded</button>
+      <button onclick="deleteOrder(${i})">Delete Order</button>
     </div>`;
   });
-  document.getElementById("orders").innerHTML=html;
+  document.getElementById("ordersList").innerHTML=html;
 }
 
 function markPaid(i){
-  let orders=JSON.parse(localStorage.getItem("orders")||"[]");
+  let orders=getOrders();
   orders[i].paid=true;
-  localStorage.setItem("orders",JSON.stringify(orders));
+  saveOrders(orders);
   renderOrders();
+}
+
+function markRefund(i){
+  let orders=getOrders();
+  orders[i].refunded=true;
+  saveOrders(orders);
+  renderOrders();
+}
+
+function deleteOrder(i){
+  if(confirm("Delete this order?")){
+    let orders=getOrders();
+    orders.splice(i,1);
+    saveOrders(orders);
+    renderOrders();
+  }
 }
 </script>
 </body>
