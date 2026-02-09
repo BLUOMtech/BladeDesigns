@@ -190,20 +190,20 @@ function renderOrders(){
   document.getElementById("ordersList").innerHTML=html;
 }
 
+// ----- Live orders update -----
+setInterval(renderOrders,1000); // re-renders orders every 1 second
 function markPaid(i){
   let orders=getOrders();
   orders[i].paid=true;
   saveOrders(orders);
   renderOrders();
 }
-
 function markRefund(i){
   let orders=getOrders();
   orders[i].refunded=true;
   saveOrders(orders);
   renderOrders();
 }
-
 function deleteOrder(i){
   if(confirm("Delete this order?")){
     let orders=getOrders();
