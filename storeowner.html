@@ -3,33 +3,97 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Store Owner</title>
+<title>Blade Designs – Owner</title>
 <style>
-body{font-family:sans-serif;padding:20px;background:#f2f2f2}
-input,select{display:block;margin:10px 0;padding:8px;width:100%}
-button{padding:10px;background:#222;color:#fff;border:none;border-radius:8px;margin-top:5px}
+body{font-family:sans-serif;background:#f2f2f2;margin:0;padding:20px}
+.box{background:#fff;padding:20px;border-radius:10px;max-width:400px;margin:auto;margin-top:60px;box-shadow:0 4px 10px rgba(0,0,0,.1)}
+input{width:100%;padding:10px;margin:10px 0;border-radius:8px;border:1px solid #ccc}
+button{padding:10px;width:100%;border:none;border-radius:8px;background:#222;color:#fff;cursor:pointer;margin-top:5px}
+.hidden{display:none}
 .card{background:#fff;padding:10px;border-radius:10px;margin:10px 0}
 </style>
 </head>
 <body>
 
-<h2>Owner Panel</h2>
+<div id="loginBox" class="box">
+  <h2>Owner Login</h2>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
 
-<h3>Add Product</h3>
-<input id="title" placeholder="Title">
-<input id="price" type="number" placeholder="Price">
-<select id="type">
-<option value="physical">Physical</option>
-<option value="digital">Digital</option>
-</select>
-<input id="download" placeholder="Download path (digital)">
-<input id="image" type="file">
-<button onclick="addProduct()">Add</button>
+<div id="ownerPanel" class="hidden">
+  <h2>Owner Panel</h2>
+  <button onclick="logout()">Logout</button>
 
-<h3>Orders</h3>
-<div id="orders"></div>
+  <h3>Change Login Credentials</h3>
+  <input id="newEmail" placeholder="New Email">
+  <input id="newPass" type="password" placeholder="New Password">
+  <button onclick="changeCredentials()">Change Login</button>
+
+  <h3>Add Product</h3>
+  <input id="title" placeholder="Title">
+  <input id="price" type="number" placeholder="Price">
+  <select id="type">
+    <option value="physical">Physical</option>
+    <option value="digital">Digital</option>
+  </select>
+  <input id="download" placeholder="Download path (digital)">
+  <input id="image" type="file">
+  <button onclick="addProduct()">Add Product</button>
+
+  <h3>Orders</h3>
+  <div id="orders"></div>
+</div>
 
 <script>
+// ----- Simple Hasher -----
+const BPhashIt = {
+  hashit: function(str){
+    let hash=0;
+    for(let i=0;i<str.length;i++){
+      hash=((hash<<5)-hash)+str.charCodeAt(i);
+      hash|=0;
+    }
+    return hash.toString();
+  }
+};
+
+// ----- Default credentials setup -----
+if(!localStorage.getItem("ownerEmail")){
+  localStorage.setItem("ownerEmail", BPhashIt.hashit("bladepeisker82@gmail.com"));
+  localStorage.setItem("ownerPass", BPhashIt.hashit("blade123"));
+}
+
+// ----- Login / Logout -----
+function login(){
+  const eHash = BPhashIt.hashit(email.value);
+  const pHash = BPhashIt.hashit(password.value);
+  if(eHash === localStorage.getItem("ownerEmail") && pHash === localStorage.getItem("ownerPass")){
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("ownerPanel").classList.remove("hidden");
+    renderOrders();
+    alert("Login successful!");
+  } else alert("Incorrect login");
+}
+
+function logout(){
+  document.getElementById("ownerPanel").classList.add("hidden");
+  document.getElementById("loginBox").classList.remove("hidden");
+  email.value=""; password.value="";
+}
+
+// ----- Change login -----
+function changeCredentials(){
+  if(newEmail.value && newPass.value){
+    localStorage.setItem("ownerEmail", BPhashIt.hashit(newEmail.value));
+    localStorage.setItem("ownerPass", BPhashIt.hashit(newPass.value));
+    newEmail.value=""; newPass.value="";
+    alert("Credentials updated! Please logout and login again.");
+  } else alert("Enter both email and password");
+}
+
+// ----- Products -----
 function getProducts(){return JSON.parse(localStorage.getItem("products")||"[]");}
 function saveProducts(p){localStorage.setItem("products",JSON.stringify(p));}
 
@@ -46,11 +110,12 @@ function addProduct(){
       download:download.value
     });
     saveProducts(p);
-    alert("Added!");
+    alert("Product added!");
   };
   r.readAsDataURL(image.files[0]);
 }
 
+// ----- Orders -----
 function renderOrders(){
   const orders=JSON.parse(localStorage.getItem("orders")||"[]");
   let html="";
@@ -71,8 +136,6 @@ function markPaid(i){
   localStorage.setItem("orders",JSON.stringify(orders));
   renderOrders();
 }
-
-renderOrders();
 </script>
 </body>
 </html>
